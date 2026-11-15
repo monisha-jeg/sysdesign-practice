@@ -27,6 +27,7 @@ public class ConsistentHashing {
      * Adds a physical node to the ring by creating several virtual nodes.
      */
     public void addNode(String node) {
+        // Each physical node is represented by many virtual points so the ring is more evenly distributed.
         for (int i = 0; i < virtualNodes; i++) {
             String virtualNode = node + "#" + i;
             long hash = hash(virtualNode);
@@ -38,6 +39,7 @@ public class ConsistentHashing {
      * Removes a physical node from the ring by deleting all of its virtual node hashes.
      */
     public void removeNode(String node) {
+        // Remove every virtual slot for the node, which effectively reassigns all of its keys to neighbors.
         for (int i = 0; i < virtualNodes; i++) {
             String virtualNode = node + "#" + i;
             long hash = hash(virtualNode);
@@ -50,10 +52,12 @@ public class ConsistentHashing {
      * If the key's hash is greater than the last ring entry, wrap back to the first entry.
      */
     public String getNode(String key) {
+        // Empty rings cannot route keys, so we fail early with a clear error for callers.
         if (ring.isEmpty()) {
             throw new IllegalStateException("No nodes are present in the ring");
         }
 
+        // The ring is sorted by hash; the first hash greater than or equal to the key defines the owner.
         SortedMap<Long, String> tailMap = ring.tailMap(hash(key));
         return !tailMap.isEmpty() ? tailMap.get(tailMap.firstKey()) : ring.get(ring.firstKey());
     }
@@ -67,6 +71,7 @@ public class ConsistentHashing {
      */
     private long hash(String value) {
         try {
+            // Use a stable cryptographic hash so the ring assignment remains consistent across runs.
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashBytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
 
@@ -86,6 +91,7 @@ public class ConsistentHashing {
         }
     }
 
+    // Run: mvn compile && java -cp target/classes ConsistentHashing
     public static void main(String[] args) {
         // Create a ring with 4 physical nodes, each represented by 128 virtual nodes.
         // More virtual nodes gives a more even spread of keys across the cluster.
